@@ -81,8 +81,8 @@ def main():
             for event in events_for_today:
                 start = event['start'].get(
                     'dateTime', event['start'].get('date'))
-                message = f"Событие через 1 день: {
-                    event['summary']}\nНачало: {start}"
+                message = f"Событие через 1 день: \
+                      {event['summary']}\nНачало: {start}"
                 send_telegram_message(message)
         else:
             print("Нет событий на завтра.")
@@ -92,8 +92,8 @@ def main():
             for event in events_for_week:
                 start = event['start'].get(
                     'dateTime', event['start'].get('date'))
-                message = f"Событие через 1 неделю: {
-                    event['summary']}\nНачало: {start}"
+                message = f"Событие через 1 неделю:\
+                      {event['summary']}\nНачало: {start}"
                 send_telegram_message(message)
         else:
             print("Нет событий через неделю.")
