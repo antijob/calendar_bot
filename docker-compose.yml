@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  scheduler:
+    build: .
+    container_name: scheduler
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_GROUP_ID=${TELEGRAM_GROUP_ID}
+      - CALENDAR_ID=${CALENDAR_ID}
+    volumes:
+      - ./calendar_bot.py:/app/calendar_bot.py
+    restart: unless-stopped
