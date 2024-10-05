@@ -18,8 +18,11 @@ RUN echo "*/10 * * * * /usr/local/bin/python /app/calendar_bot.py >> /var/log/cr
 # Даём правильные права на cron задание
 RUN chmod 0644 /etc/cron.d/calendar_bot
 
+# Даем права на выполнение скрипта
+RUN chmod +x /app/calendar_bot.py
+
 # Создаем лог файл
 RUN touch /var/log/cron.log
 
-# Запускаем cron и основной процесс
-CMD cron && tail -f /var/log/cron.log
+# Запускаем cron в foreground режиме
+CMD ["cron", "-f"]
