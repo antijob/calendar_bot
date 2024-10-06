@@ -13,7 +13,7 @@ COPY . /app
 RUN apt-get update && apt-get install -y cron
 
 # Добавляем задание в cron для выполнения скрипта каждые 10 минут
-RUN echo "*/10 * * * * /usr/local/bin/python /app/calendar_bot.py >> /var/log/cron.log 2>&1" > /etc/cron.d/calendar_bot
+RUN echo "0 0 * * *  root /usr/local/bin/python /app/calendar_bot.py >> /var/log/cron.log 2>&1" > /etc/cron.d/calendar_bot
 
 # Даём правильные права на cron задание
 RUN chmod 0644 /etc/cron.d/calendar_bot
