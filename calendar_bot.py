@@ -15,15 +15,16 @@ CALENDAR_ID = os.getenv("CALENDAR_ID")
 
 # Функция для отправки сообщения в Telegram
 
+
 def escape_markdown_v2(text):
-    reserved_chars = r"_*[]()~`>#+-=|{}.!-"
-    for char in reserved_chars:
-        text = text.replace(char, f"\\{char}")
-    return text
+    escape_chars = r"_*[]()~`>#+-=|{}.!"
+    return "".join(f"\\{char}" if char in escape_chars else char for char in text)
+
 
 def send_telegram_message(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    data = {"chat_id": TELEGRAM_GROUP_ID, "text": message, "parse_mode": "MarkdownV2"}
+    data = {"chat_id": TELEGRAM_GROUP_ID,
+            "text": message, "parse_mode": "MarkdownV2"}
     response = requests.post(url, data=data)
     if response.status_code == 200:
         print("Сообщение отправлено в Telegram группу")
@@ -92,12 +93,14 @@ def main():
     if not events:
         print("Нет предстоящих событий.")
     else:
-        events_for_today, events_for_week, events_for_two_week = filter_events(events)
+        events_for_today, events_for_week, events_for_two_week = filter_events(
+            events)
 
         # Отправляем уведомления о событиях за 1 день
         if events_for_today:
             for event in events_for_today:
-                start = event["start"].get("dateTime", event["start"].get("date"))
+                start = event["start"].get(
+                    "dateTime", event["start"].get("date"))
                 description = event.get("description", "Описание отсутствует")
                 message = (
                     f"Событие через 1 день:\n"
@@ -112,7 +115,8 @@ def main():
         # Отправляем уведомления о событиях за 1 неделю
         if events_for_week:
             for event in events_for_week:
-                start = event["start"].get("dateTime", event["start"].get("date"))
+                start = event["start"].get(
+                    "dateTime", event["start"].get("date"))
                 description = event.get("description", "Описание отсутствует")
                 message = (
                     f"Событие через 1 неделю:\n"
@@ -127,7 +131,8 @@ def main():
         # Отправляем уведомления о событиях за 2 недели
         if events_for_two_week:
             for event in events_for_two_week:
-                start = event["start"].get("dateTime", event["start"].get("date"))
+                start = event["start"].get(
+                    "dateTime", event["start"].get("date"))
                 description = event.get("description", "Описание отсутствует")
                 message = (
                     f"Событие через 2 недели:\n"
