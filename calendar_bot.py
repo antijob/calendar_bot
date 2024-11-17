@@ -15,6 +15,11 @@ CALENDAR_ID = os.getenv("CALENDAR_ID")
 
 # Функция для отправки сообщения в Telegram
 
+def escape_markdown_v2(text):
+    reserved_chars = r"_*[]()~`>#+-=|{}.!-"
+    for char in reserved_chars:
+        text = text.replace(char, f"\\{char}")
+    return text
 
 def send_telegram_message(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -96,9 +101,9 @@ def main():
                 description = event.get("description", "Описание отсутствует")
                 message = (
                     f"Событие через 1 день:\n"
-                    f"*{event['summary'].strip()}*\n"
-                    f"Описание: {description.strip()}\n"
-                    f"Начало: {start}"
+                    f"*{escape_markdown_v2(event['summary'].strip())}*\n"
+                    f"Описание: {escape_markdown_v2(description.strip())}\n"
+                    f"Начало: {escape_markdown_v2(start)}"
                 )
                 send_telegram_message(message)
         else:
@@ -111,24 +116,24 @@ def main():
                 description = event.get("description", "Описание отсутствует")
                 message = (
                     f"Событие через 1 неделю:\n"
-                    f"*{event['summary'].strip()}*\n"
-                    f"Описание: {description.strip()}\n"
-                    f"Начало: {start}"
+                    f"*{escape_markdown_v2(event['summary'].strip())}*\n"
+                    f"Описание: {escape_markdown_v2(description.strip())}\n"
+                    f"Начало: {escape_markdown_v2(start)}"
                 )
                 send_telegram_message(message)
         else:
             print("Нет событий через неделю.")
 
-        # Отправляем уведомления о событиях за 2 неди
+        # Отправляем уведомления о событиях за 2 недели
         if events_for_two_week:
             for event in events_for_two_week:
                 start = event["start"].get("dateTime", event["start"].get("date"))
                 description = event.get("description", "Описание отсутствует")
                 message = (
                     f"Событие через 2 недели:\n"
-                    f"*{event['summary'].strip()}*\n"
-                    f"Описание: {description.strip()}\n"
-                    f"Начало: {start}"
+                    f"*{escape_markdown_v2(event['summary'].strip())}*\n"
+                    f"Описание: {escape_markdown_v2(description.strip())}\n"
+                    f"Начало: {escape_markdown_v2(start)}"
                 )
                 send_telegram_message(message)
         else:
