@@ -3,12 +3,13 @@ import requests
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
+from typing import Optional
 
 # Загружаем переменные окружения из .env файла
 load_dotenv()
 
 
-def _read_secret(env_var: str) -> str | None:
+def _read_secret(env_var: str) -> Optional[str]:
     """Read a value from an env var or, when *_FILE is set, from a secrets file."""
     file_path = os.getenv(f"{env_var}_FILE")
     if file_path:
