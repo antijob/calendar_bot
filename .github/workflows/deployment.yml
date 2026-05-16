@@ -1,141 +1,141 @@
 name: deployment
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - "v*"
-  pull_request:
-  workflow_dispatch:
-    inputs:
-      runType:
-        description: "How to run this build?"
-        required: true
-        default: "default"
-        type: choice
-        options:
-          - Force build
-          - Default
+    push:
+        branches:
+            - main
+        tags:
+            - "v*"
+    pull_request:
+    workflow_dispatch:
+        inputs:
+            runType:
+                description: "How to run this build?"
+                required: true
+                default: "default"
+                type: choice
+                options:
+                    - Force build
+                    - Default
 
 jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    verify:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+            - name: Install dependencies
+              run: pip install -r requirements.txt
 
-      - name: Run verify.sh
-        run: bash scripts/verify.sh
+            - name: Run verify.sh
+              run: bash scripts/verify.sh
 
-  check-docs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    check-docs:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
 
-      - name: Run check-docs.sh
-        run: bash scripts/check-docs.sh
+            - name: Run check-docs.sh
+              run: bash scripts/check-docs.sh
 
-  build:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: [verify, check-docs]
-    outputs:
-      IMAGE_TAG: ${{ steps.build-image.outputs.IMAGE_TAG || steps.set-tag.outputs.IMAGE_TAG || 'main' }}
-    runs-on: ubuntu-latest
-    environment: ${{ github.ref == 'refs/heads/main' && 'Prod' || 'Unknown' }}
-    steps:
-      - uses: actions/checkout@v4
+    build:
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        needs: [verify, check-docs]
+        outputs:
+            IMAGE_TAG: ${{ steps.build-image.outputs.IMAGE_TAG || steps.set-tag.outputs.IMAGE_TAG || 'main' }}
+        runs-on: ubuntu-latest
+        environment: ${{ github.ref == 'refs/heads/main' && 'Prod' || 'Unknown' }}
+        steps:
+            - uses: actions/checkout@v4
 
-      - name: Set branch name and commit hash
-        id: set-branch
-        run: |
-          BRANCH_NAME=${GITHUB_REF#refs/heads/}
-          COMMIT_HASH=${GITHUB_SHA::7}
-          echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_OUTPUT
-          echo "COMMIT_HASH=${COMMIT_HASH}" >> $GITHUB_OUTPUT
+            - name: Set branch name and commit hash
+              id: set-branch
+              run: |
+                  BRANCH_NAME=${GITHUB_REF#refs/heads/}
+                  COMMIT_HASH=${GITHUB_SHA::7}
+                  echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_OUTPUT
+                  echo "COMMIT_HASH=${COMMIT_HASH}" >> $GITHUB_OUTPUT
 
-      - name: Configure Docker Hub auth credentials
-        run: |
-          echo "$DOCKER_PUSH_TOKEN" | docker login --username "$DOCKER_USERNAME" --password-stdin
+            - name: Configure Docker Hub auth credentials
+              run: |
+                  echo "$DOCKER_PUSH_TOKEN" | docker login --username "$DOCKER_USERNAME" --password-stdin
+              env:
+                  DOCKER_USERNAME: antijob
+                  DOCKER_PUSH_TOKEN: ${{ secrets.DOCKER_PUSH_TOKEN }}
+
+            - uses: dorny/paths-filter@v3
+              id: filter
+              with:
+                  filters: |
+                      app:
+                        - 'calendar_bot.py'
+                        - 'requirements.txt'
+                        - 'Dockerfile'
+                        - 'docker-compose.prod.yml'
+                        - '.github/**'
+
+            - name: Build image
+              id: build-image
+              if: ${{ steps.filter.outputs.app == 'true' || github.event.inputs.runType == 'Force build' }}
+              run: |
+                  BRANCH_NAME=${GITHUB_REF#refs/heads/}
+                  COMMIT_HASH=${GITHUB_SHA::7}
+                  IMAGE_TAG="${BRANCH_NAME}-${COMMIT_HASH}"
+
+                  docker build . \
+                    -t antijob/antijob-calendar:${IMAGE_TAG} \
+                    -t antijob/antijob-calendar:${BRANCH_NAME} \
+                    -t antijob/antijob-calendar:latest
+
+                  docker push antijob/antijob-calendar:${IMAGE_TAG}
+                  docker push antijob/antijob-calendar:${BRANCH_NAME}
+                  docker push antijob/antijob-calendar:latest
+
+                  echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+
+            - name: Set fallback tag
+              id: set-tag
+              if: ${{ steps.build-image.outcome == 'skipped' }}
+              run: echo "IMAGE_TAG=main" >> $GITHUB_OUTPUT
+
+    deploy:
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        runs-on: ["self-hosted", "swarm_manager"]
+        environment: ${{ github.ref == 'refs/heads/main' && 'Prod' || 'Unknown' }}
+        needs: [build]
         env:
-          DOCKER_USERNAME: antijob
-          DOCKER_PUSH_TOKEN: ${{ secrets.DOCKER_PUSH_TOKEN }}
+            IMAGE_TAG: ${{ needs.build.outputs.IMAGE_TAG }}
+        steps:
+            - uses: actions/checkout@v4
 
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            app:
-              - 'calendar_bot.py'
-              - 'requirements.txt'
-              - 'Dockerfile'
-              - 'docker-compose.prod.yml'
-              - '.github/**'
+            - name: Docker login
+              run: |
+                  echo "$DOCKER_PULL_TOKEN" | docker login --username "$DOCKER_USERNAME" --password-stdin
+              env:
+                  DOCKER_USERNAME: antijob
+                  DOCKER_PULL_TOKEN: ${{ secrets.DOCKER_PULL_TOKEN }}
 
-      - name: Build image
-        id: build-image
-        if: ${{ steps.filter.outputs.app == 'true' || github.event.inputs.runType == 'Force build' }}
-        run: |
-          BRANCH_NAME=${GITHUB_REF#refs/heads/}
-          COMMIT_HASH=${GITHUB_SHA::7}
-          IMAGE_TAG="${BRANCH_NAME}-${COMMIT_HASH}"
+            - name: Deploy stack
+              env:
+                  CALENDAR_ID: "${{ secrets.CALENDAR_ID }}"
+                  TELEGRAM_GROUP_ID: "${{ secrets.TELEGRAM_GROUP_ID }}"
+              run: |
+                  DEPLOY_TAG="${IMAGE_TAG:-main}"
+                  echo "Deploying antijob/antijob-calendar:${DEPLOY_TAG}"
 
-          docker build . \
-            -t antijob/antijob-calendar:${IMAGE_TAG} \
-            -t antijob/antijob-calendar:${BRANCH_NAME} \
-            -t antijob/antijob-calendar:latest
+                  docker pull antijob/antijob-calendar:${DEPLOY_TAG}
 
-          docker push antijob/antijob-calendar:${IMAGE_TAG}
-          docker push antijob/antijob-calendar:${BRANCH_NAME}
-          docker push antijob/antijob-calendar:latest
+                  docker stack deploy \
+                    --resolve-image always \
+                    -c docker-compose.prod.yml \
+                    --with-registry-auth \
+                    antijob_calendar
 
-          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_OUTPUT
-
-      - name: Set fallback tag
-        id: set-tag
-        if: ${{ steps.build-image.outcome == 'skipped' }}
-        run: echo "IMAGE_TAG=main" >> $GITHUB_OUTPUT
-
-  deploy:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    runs-on: ["self-hosted", "swarm_manager"]
-    environment: ${{ github.ref == 'refs/heads/main' && 'Prod' || 'Unknown' }}
-    needs: [build]
-    env:
-      IMAGE_TAG: ${{ needs.build.outputs.IMAGE_TAG }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Docker login
-        run: |
-          echo "$DOCKER_PULL_TOKEN" | docker login --username "$DOCKER_USERNAME" --password-stdin
-        env:
-          DOCKER_USERNAME: antijob
-          DOCKER_PULL_TOKEN: ${{ secrets.DOCKER_PULL_TOKEN }}
-
-      - name: Deploy stack
-        env:
-          CALENDAR_ID: "${{ secrets.CALENDAR_ID }}"
-          TELEGRAM_GROUP_ID: "${{ secrets.TELEGRAM_GROUP_ID }}"
-        run: |
-          DEPLOY_TAG="${IMAGE_TAG:-main}"
-          echo "Deploying antijob/antijob-calendar:${DEPLOY_TAG}"
-
-          docker pull antijob/antijob-calendar:${DEPLOY_TAG}
-
-          docker stack deploy \
-            --resolve-image always \
-            -c docker-compose.prod.yml \
-            --with-registry-auth \
-            antijob_calendar
-
-          docker service update --force \
-            --image antijob/antijob-calendar:${DEPLOY_TAG} \
-            antijob_calendar_scheduler
+                  docker service update --force \
+                    --image antijob/antijob-calendar:${DEPLOY_TAG} \
+                    antijob_calendar_scheduler
