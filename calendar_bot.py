@@ -67,10 +67,11 @@ def get_calendar_events():
 # Фильтруем события по времени: 1 день и 7 дней до события
 
 
-def filter_events(events):
-    one_day_from_now = datetime.now(timezone.utc) + timedelta(days=1)
-    one_week_from_now = datetime.now(timezone.utc) + timedelta(days=7)
-    two_week_from_now = datetime.now(timezone.utc) + timedelta(days=14)
+def filter_events(events, reference_time=None):
+    reference_time = reference_time or datetime.now(timezone.utc)
+    one_day_from_now = reference_time + timedelta(days=1)
+    one_week_from_now = reference_time + timedelta(days=7)
+    two_week_from_now = reference_time + timedelta(days=14)
 
     events_for_today = []
     events_for_week = []

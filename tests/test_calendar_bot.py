@@ -97,10 +97,12 @@ class TestEscapeMarkdownV2:
 
 class TestFilterEvents:
     """Test filter_events function for correct date-based filtering."""
+
+    BASE_TIME = datetime(2026, 5, 16, 12, 0, tzinfo=timezone.utc)
     
     def get_base_time(self):
-        """Get current UTC time for consistent testing."""
-        return datetime.now(timezone.utc)
+        """Get a fixed UTC time for consistent testing."""
+        return self.BASE_TIME
     
     def create_event(self, title, days_offset=0, hours_offset=0):
         """Create a mock event with given offset from now."""
@@ -119,10 +121,12 @@ class TestFilterEvents:
             self.create_event("Tomorrow event", days_offset=1),
             self.create_event("Next week", days_offset=7),
         ]
-        today, week, two_week = filter_events(events)
+        today, week, two_week = filter_events(events, reference_time=self.get_base_time())
         assert len(today) == 1
         assert today[0]["summary"] == "Tomorrow event"
-        assert len(week) == 0
+        assert len(week) == 1
+        assert week[0]["summary"] == "Next week"
+        assert len(two_week) == 0
     
     def test_filter_events_one_week(self):
         """Should filter events for 1 week ahead."""
@@ -131,16 +135,20 @@ class TestFilterEvents:
             self.create_event("One week", days_offset=7),
             self.create_event("Two weeks", days_offset=14),
         ]
-        today, week, two_week = filter_events(events)
+        today, week, two_week = filter_events(events, reference_time=self.get_base_time())
+        assert len(today) == 1
         assert len(week) == 1
         assert week[0]["summary"] == "One week"
+        assert len(two_week) == 1
     
     def test_filter_events_two_weeks(self):
         """Should filter events for 2 weeks ahead."""
         events = [
             self.create_event("Two weeks", days_offset=14),
         ]
-        today, week, two_week = filter_events(events)
+        today, week, two_week = filter_events(events, reference_time=self.get_base_time())
+        assert len(today) == 0
+        assert len(week) == 0
         assert len(two_week) == 1
         assert two_week[0]["summary"] == "Two weeks"
     
@@ -150,7 +158,7 @@ class TestFilterEvents:
             self.create_event("Yesterday", days_offset=-1),
             self.create_event("Last week", days_offset=-7),
         ]
-        today, week, two_week = filter_events(events)
+        today, week, two_week = filter_events(events, reference_time=self.get_base_time())
         assert len(today) == 0
         assert len(week) == 0
         assert len(two_week) == 0
@@ -162,7 +170,7 @@ class TestFilterEvents:
             self.create_event("In 5 days", days_offset=5),
             self.create_event("In 10 days", days_offset=10),
         ]
-        today, week, two_week = filter_events(events)
+        today, week, two_week = filter_events(events, reference_time=self.get_base_time())
         assert len(today) == 0
         assert len(week) == 0
         assert len(two_week) == 0
@@ -173,8 +181,10 @@ class TestFilterEvents:
             self.create_event("Event 1 tomorrow", days_offset=1, hours_offset=0),
             self.create_event("Event 2 tomorrow", days_offset=1, hours_offset=5),
         ]
-        today, week, two_week = filter_events(events)
+        today, week, two_week = filter_events(events, reference_time=self.get_base_time())
         assert len(today) == 2
+        assert len(week) == 0
+        assert len(two_week) == 0
 
 
 class TestEnvironmentValidation:
