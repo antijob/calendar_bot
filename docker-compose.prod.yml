@@ -44,7 +44,7 @@ services:
 secrets:
   GOOGLE_API_KEY:
     external: true
-    name: secret.GOOGLE_API_KEY
+    name: ${GOOGLE_API_KEY_SECRET_NAME:-secret.GOOGLE_API_KEY}
   TELEGRAM_BOT_TOKEN:
     external: true
-    name: secret.TELEGRAM_BOT_TOKEN
+    name: ${TELEGRAM_BOT_TOKEN_SECRET_NAME:-secret.TELEGRAM_BOT_TOKEN}

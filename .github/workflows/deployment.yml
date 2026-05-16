@@ -123,27 +123,41 @@ jobs:
                   DOCKER_USERNAME: antijob
                   DOCKER_PULL_TOKEN: ${{ secrets.DOCKER_PULL_TOKEN }}
 
-            - name: Ensure swarm secrets exist
+            - name: Prepare swarm secrets
               env:
                   GOOGLE_API_KEY: "${{ secrets.GOOGLE_API_KEY }}"
                   TELEGRAM_BOT_TOKEN: "${{ secrets.TELEGRAM_BOT_TOKEN }}"
               run: |
                   set +x
-                  if ! docker secret inspect secret.GOOGLE_API_KEY >/dev/null 2>&1; then
-                    printf '%s' "${GOOGLE_API_KEY}" | docker secret create secret.GOOGLE_API_KEY -
-                    echo "Created secret.GOOGLE_API_KEY"
+                  GOOGLE_API_KEY_HASH="$(printf '%s' "${GOOGLE_API_KEY}" | sha256sum | cut -c1-12)"
+                  TELEGRAM_BOT_TOKEN_HASH="$(printf '%s' "${TELEGRAM_BOT_TOKEN}" | sha256sum | cut -c1-12)"
+
+                  GOOGLE_API_KEY_SECRET_NAME="secret.GOOGLE_API_KEY.${GOOGLE_API_KEY_HASH}"
+                  TELEGRAM_BOT_TOKEN_SECRET_NAME="secret.TELEGRAM_BOT_TOKEN.${TELEGRAM_BOT_TOKEN_HASH}"
+
+                  if ! docker secret inspect "${GOOGLE_API_KEY_SECRET_NAME}" >/dev/null 2>&1; then
+                    printf '%s' "${GOOGLE_API_KEY}" | docker secret create "${GOOGLE_API_KEY_SECRET_NAME}" -
+                    echo "Created ${GOOGLE_API_KEY_SECRET_NAME}"
                   else
-                    echo "secret.GOOGLE_API_KEY already exists"
+                    echo "${GOOGLE_API_KEY_SECRET_NAME} already exists"
                   fi
-                  if ! docker secret inspect secret.TELEGRAM_BOT_TOKEN >/dev/null 2>&1; then
-                    printf '%s' "${TELEGRAM_BOT_TOKEN}" | docker secret create secret.TELEGRAM_BOT_TOKEN -
-                    echo "Created secret.TELEGRAM_BOT_TOKEN"
+
+                  if ! docker secret inspect "${TELEGRAM_BOT_TOKEN_SECRET_NAME}" >/dev/null 2>&1; then
+                    printf '%s' "${TELEGRAM_BOT_TOKEN}" | docker secret create "${TELEGRAM_BOT_TOKEN_SECRET_NAME}" -
+                    echo "Created ${TELEGRAM_BOT_TOKEN_SECRET_NAME}"
                   else
-                    echo "secret.TELEGRAM_BOT_TOKEN already exists"
+                    echo "${TELEGRAM_BOT_TOKEN_SECRET_NAME} already exists"
                   fi
+
+                  {
+                    echo "GOOGLE_API_KEY_SECRET_NAME=${GOOGLE_API_KEY_SECRET_NAME}"
+                    echo "TELEGRAM_BOT_TOKEN_SECRET_NAME=${TELEGRAM_BOT_TOKEN_SECRET_NAME}"
+                  } >> "$GITHUB_ENV"
                   set -x
             - name: Deploy stack
               env:
+                  GOOGLE_API_KEY_SECRET_NAME: "${{ env.GOOGLE_API_KEY_SECRET_NAME }}"
+                  TELEGRAM_BOT_TOKEN_SECRET_NAME: "${{ env.TELEGRAM_BOT_TOKEN_SECRET_NAME }}"
                   CALENDAR_ID: "${{ secrets.CALENDAR_ID }}"
                   TELEGRAM_GROUP_ID: "${{ secrets.TELEGRAM_GROUP_ID }}"
               run: |
