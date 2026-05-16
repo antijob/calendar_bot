@@ -120,6 +120,25 @@ jobs:
                   DOCKER_USERNAME: antijob
                   DOCKER_PULL_TOKEN: ${{ secrets.DOCKER_PULL_TOKEN }}
 
+            - name: Ensure swarm secrets exist
+              env:
+                GOOGLE_API_KEY: "${{ secrets.GOOGLE_API_KEY }}"
+                TELEGRAM_BOT_TOKEN: "${{ secrets.TELEGRAM_BOT_TOKEN }}"
+              run: |
+                set +x
+                if ! docker secret inspect secret.GOOGLE_API_KEY >/dev/null 2>&1; then
+                  printf '%s' "${GOOGLE_API_KEY}" | docker secret create secret.GOOGLE_API_KEY -
+                  echo "Created secret.GOOGLE_API_KEY"
+                else
+                  echo "secret.GOOGLE_API_KEY already exists"
+                fi
+                if ! docker secret inspect secret.TELEGRAM_BOT_TOKEN >/dev/null 2>&1; then
+                  printf '%s' "${TELEGRAM_BOT_TOKEN}" | docker secret create secret.TELEGRAM_BOT_TOKEN -
+                  echo "Created secret.TELEGRAM_BOT_TOKEN"
+                else
+                  echo "secret.TELEGRAM_BOT_TOKEN already exists"
+                fi
+                set -x
             - name: Deploy stack
               env:
                   CALENDAR_ID: "${{ secrets.CALENDAR_ID }}"
