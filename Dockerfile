@@ -1,28 +1,33 @@
 # Используем базовый образ Python
-FROM python:3.9-slim
+FROM python:3.9-slim AS build
 
-# Устанавливаем зависимости
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем скрипты
-COPY . /app
+# --- runtime ---
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Копируем установленные пакеты из build-стадии
+COPY --from=build /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
+COPY --from=build /usr/local/bin /usr/local/bin
+
+# Копируем исходный код
+COPY calendar_bot.py .
 
 # Устанавливаем cron
-RUN apt-get update && apt-get install -y cron
+RUN apt-get update && apt-get install -y --no-install-recommends cron \
+    && rm -rf /var/lib/apt/lists/*
 
-# Добавляем задание в cron для выполнения скрипта каждые 10 минут
-RUN echo "0 0 * * *  root /usr/local/bin/python /app/calendar_bot.py >> /var/log/cron.log 2>&1" > /etc/cron.d/calendar_bot
+# Добавляем задание в cron для выполнения скрипта каждый день в полночь
+RUN echo "0 0 * * *  root /usr/local/bin/python /app/calendar_bot.py >> /var/log/cron.log 2>&1" \
+    > /etc/cron.d/calendar_bot \
+    && chmod 0644 /etc/cron.d/calendar_bot
 
-# Даём правильные права на cron задание
-RUN chmod 0644 /etc/cron.d/calendar_bot
+ENV PYTHONUNBUFFERED=1
 
-# Даем права на выполнение скрипта
-RUN chmod +x /app/calendar_bot.py
-
-# Создаем лог файл
+# Создаем лог файл и запускаем cron в foreground режиме
 RUN touch /var/log/cron.log
-
-# Запускаем cron в foreground режиме
 CMD ["cron", "-f"]

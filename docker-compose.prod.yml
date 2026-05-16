@@ -1,0 +1,50 @@
+x-deploy: &deploy
+  deploy:
+    placement:
+      constraints:
+        - "node.role==worker"
+        - "node.labels.service==antijob_calendar"
+        - "node.labels.environment==production"
+    replicas: 1
+    update_config:
+      order: start-first
+      parallelism: 1
+      delay: 10s
+    rollback_config:
+      order: stop-first
+      parallelism: 1
+    restart_policy:
+      condition: any
+      delay: 5s
+      max_attempts: 2
+      window: 120s
+
+services:
+  scheduler:
+    <<: *deploy
+    image: antijob/antijob-calendar:${IMAGE_TAG:-main}
+    environment:
+      GOOGLE_API_KEY_FILE: /run/secrets/GOOGLE_API_KEY
+      TELEGRAM_BOT_TOKEN_FILE: /run/secrets/TELEGRAM_BOT_TOKEN
+      CALENDAR_ID: ${CALENDAR_ID}
+      TELEGRAM_GROUP_ID: ${TELEGRAM_GROUP_ID}
+    secrets:
+      - source: GOOGLE_API_KEY
+        target: GOOGLE_API_KEY
+      - source: TELEGRAM_BOT_TOKEN
+        target: TELEGRAM_BOT_TOKEN
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+        mode: "non-blocking"
+        max-buffer-size: "4m"
+
+secrets:
+  GOOGLE_API_KEY:
+    external: true
+    name: secret.GOOGLE_API_KEY
+  TELEGRAM_BOT_TOKEN:
+    external: true
+    name: secret.TELEGRAM_BOT_TOKEN

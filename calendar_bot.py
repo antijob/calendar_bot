@@ -7,9 +7,19 @@ from datetime import datetime, timezone, timedelta
 # Загружаем переменные окружения из .env файла
 load_dotenv()
 
+
+def _read_secret(env_var: str) -> str | None:
+    """Read a value from an env var or, when *_FILE is set, from a secrets file."""
+    file_path = os.getenv(f"{env_var}_FILE")
+    if file_path:
+        with open(file_path) as f:
+            return f.read().strip()
+    return os.getenv(env_var)
+
+
 # Получаем значения из .env файла
-API_KEY = os.getenv("GOOGLE_API_KEY")
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+API_KEY = _read_secret("GOOGLE_API_KEY")
+TELEGRAM_BOT_TOKEN = _read_secret("TELEGRAM_BOT_TOKEN")
 TELEGRAM_GROUP_ID = os.getenv("TELEGRAM_GROUP_ID")
 CALENDAR_ID = os.getenv("CALENDAR_ID")
 
