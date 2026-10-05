@@ -6,7 +6,7 @@ set -eu
 umask 077
 
 : > /app/.env
-for name in GOOGLE_API_KEY TELEGRAM_BOT_TOKEN TELEGRAM_GROUP_ID CALENDAR_ID; do
+for name in GOOGLE_API_KEY GOOGLE_API_KEY_FILE TELEGRAM_BOT_TOKEN TELEGRAM_BOT_TOKEN_FILE TELEGRAM_GROUP_ID CALENDAR_ID; do
     eval "value=\${$name-}"
     printf '%s="%s"\n' "$name" "$value" >> /app/.env
 done

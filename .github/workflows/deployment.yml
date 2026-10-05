@@ -111,6 +111,9 @@ jobs:
         runs-on: ["self-hosted", "swarm_manager"]
         environment: ${{ github.ref == 'refs/heads/main' && 'Prod' || 'Unknown' }}
         needs: [build]
+        concurrency:
+            group: deploy-prod
+            cancel-in-progress: false
         env:
             IMAGE_TAG: ${{ needs.build.outputs.IMAGE_TAG }}
         steps:
@@ -171,7 +174,3 @@ jobs:
                     -c docker-compose.prod.yml \
                     --with-registry-auth \
                     antijob_calendar
-
-                  docker service update --force \
-                    --image antijob/antijob-calendar:${DEPLOY_TAG} \
-                    antijob_calendar_scheduler

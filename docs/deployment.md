@@ -15,7 +15,15 @@ docker logs -f scheduler
 docker-compose down
 ```
 
-The container runs `calendar_bot.py` every day at midnight via cron. Logs are written to `/var/log/cron.log` inside the container.
+The container runs `calendar_bot.py` every day at midnight via cron. The output of every run (stdout and stderr) goes to the container logs, so `docker logs scheduler` shows it.
+
+## Docker Swarm (production)
+
+The `deploy` job in `.github/workflows/deployment.yml` runs a single `docker stack deploy --resolve-image always` with `docker-compose.prod.yml`. Swarm performs one rolling update of `antijob_calendar_scheduler`; the workflow does not call `docker service update` afterwards, because a second update started while the first one is still running fails with `update out of sequence`.
+
+Deployments to production never run in parallel: a second deployment waits for the running one instead of cancelling it.
+
+To restart the service when the image tag has not changed, run the workflow manually with `Force build`, which builds and pushes a new image.
 
 ## Systemd timer (alternative)
 

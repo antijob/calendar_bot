@@ -1,9 +1,12 @@
 import os
+import sys
+import traceback
 import requests
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 from typing import Optional
+from urllib.parse import quote, quote_plus
 
 # Загружаем переменные окружения из .env файла
 load_dotenv()
@@ -157,6 +160,28 @@ def main():
             print("Нет событий через 2 недели.")
 
 
+# Маскируем секреты в тексте ошибок: URL запросов содержат ключ API и токен бота
+
+
+def redact_secrets(text, secrets=None):
+    if secrets is None:
+        secrets = [API_KEY, TELEGRAM_BOT_TOKEN]
+    for secret in secrets:
+        if not secret:
+            continue
+        for variant in {secret, quote(secret, safe=""), quote_plus(secret)}:
+            text = text.replace(variant, "***")
+    return text
+
+
+def run():
+    try:
+        main()
+    except Exception:
+        print(redact_secrets(traceback.format_exc()), file=sys.stderr)
+        sys.exit(1)
+
+
 # Запуск основного кода
 if __name__ == "__main__":
-    main()
+    run()

@@ -11,6 +11,12 @@ All configuration is loaded from environment variables. Copy `.env.example` to `
 | `TELEGRAM_BOT_TOKEN` | Yes | Token from BotFather (`123456:ABC-DEF...`) |
 | `TELEGRAM_GROUP_ID` | Yes | Numeric chat ID of the Telegram group (negative for groups, e.g. `-1001234567890`) |
 
+## Secrets from files
+
+`GOOGLE_API_KEY` and `TELEGRAM_BOT_TOKEN` can also be provided as files (for example Docker Swarm secrets): set `GOOGLE_API_KEY_FILE` or `TELEGRAM_BOT_TOKEN_FILE` to the file path (such as `/run/secrets/GOOGLE_API_KEY`). When a `*_FILE` variable is set, it takes precedence over the plain variable.
+
+In the Docker image, cron starts jobs with an empty environment, so the entrypoint saves the configuration variables to `/app/.env` when the container starts. For `*_FILE` variables only the file path is saved, never the secret itself. Recreate the container after changing the configuration. Values must not contain `"` or line breaks.
+
 ## Getting the values
 
 ### Google API key

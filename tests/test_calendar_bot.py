@@ -1,4 +1,10 @@
-from calendar_bot import _read_secret, escape_markdown_v2, filter_events
+from calendar_bot import (
+    _read_secret,
+    escape_markdown_v2,
+    filter_events,
+    redact_secrets,
+    run,
+)
 import os
 import tempfile
 from datetime import datetime, timezone, timedelta
@@ -193,6 +199,49 @@ class TestFilterEvents:
         assert len(today) == 2
         assert len(week) == 0
         assert len(two_week) == 0
+
+
+class TestRedactSecrets:
+    """Test redact_secrets and run: secrets must not reach error output."""
+
+    def test_masks_api_key_in_url(self):
+        """Should mask the API key in a Google API request URL."""
+        text = "HttpError 400 when requesting https://x/events?key=KEY123&alt=json"
+        result = redact_secrets(text, ["KEY123", "123:ABC"])
+        assert "KEY123" not in result
+        assert "key=***&alt=json" in result
+
+    def test_masks_bot_token_in_url(self):
+        """Should mask the bot token in a Telegram request URL."""
+        text = "ConnectionError: https://api.telegram.org/bot123:ABC/sendMessage"
+        result = redact_secrets(text, ["KEY123", "123:ABC"])
+        assert "123:ABC" not in result
+        assert "bot***/sendMessage" in result
+
+    def test_masks_url_encoded_secret(self):
+        """Should mask the URL-encoded form of a secret."""
+        text = "https://x/bot123%3AABC/sendMessage"
+        result = redact_secrets(text, ["123:ABC"])
+        assert "123%3AABC" not in result
+
+    def test_empty_secret_masks_nothing(self):
+        """Empty or missing secrets must not mask anything."""
+        text = "plain error text"
+        assert redact_secrets(text, ["", None]) == text
+
+    def test_run_prints_redacted_traceback_and_exits_1(self, capsys):
+        """Unhandled error: redacted traceback to stderr, exit code 1."""
+        with patch("calendar_bot.API_KEY", "KEY123"), \
+                patch("calendar_bot.TELEGRAM_BOT_TOKEN", "123:ABC"), \
+                patch("calendar_bot.main",
+                      side_effect=RuntimeError("failed key=KEY123")):
+            with pytest.raises(SystemExit) as exc:
+                run()
+        assert exc.value.code == 1
+        err = capsys.readouterr().err
+        assert "RuntimeError" in err
+        assert "KEY123" not in err
+        assert "key=***" in err
 
 
 class TestEnvironmentValidation:
