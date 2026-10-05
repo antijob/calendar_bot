@@ -1,0 +1,31 @@
+schema: spec-driven
+
+# Project context (optional)
+# Add only constraints that should guide OpenSpec artifacts and workflows.
+# Include constraints an agent cannot infer by reading the code.
+# Keep general project documentation and discoverable codebase facts out.
+context: |
+  Write all artifacts in Russian (README, code comments and user-facing
+  Telegram messages are in Russian too).
+  The bot is a one-shot script run by cron inside Docker, not a long-running
+  service. Any change must keep working when executed once per day.
+  Telegram messages use parse_mode MarkdownV2: every dynamic value (summary,
+  description, dates) must go through escape_markdown_v2, otherwise Telegram
+  returns HTTP 400.
+  Secrets (GOOGLE_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_GROUP_ID, CALENDAR_ID)
+  come only from environment / .env. Never hardcode or log them.
+  There is no test suite; verify changes by running the script against a test
+  calendar and a test Telegram group.
+
+# Per-artifact rules (optional)
+rules:
+  proposal:
+    - State what is out of scope
+  tasks:
+    - Include a manual verification task (test calendar and test Telegram group)
+
+# Per-operation guidance (optional)
+# operations:
+#   apply:
+#     guidance:
+#       - Keep test summaries concise
